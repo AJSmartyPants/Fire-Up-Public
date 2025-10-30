@@ -1,0 +1,19 @@
+{
+  "features":[
+    "PRECIPITATION",
+    "MAX_TEMP",
+    "MIN_TEMP",
+    "AVG_WIND_SPEED",
+    "TEMP_RANGE",
+    "WIND_TEMP_RATIO",
+    "LAGGED_PRECIPITATION",
+    "LAGGED_AVG_WIND_SPEED",
+    "SEASON"
+  ],
+  "best_model":"GradientBoosting",
+  "best_params":{
+    "model__learning_rate":0.05,
+    "model__max_depth":3,
+    "model__n_estimators":100
+  }
+}

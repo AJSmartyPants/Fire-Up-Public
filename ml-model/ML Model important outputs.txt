@@ -1,0 +1,68 @@
+---------------------------------------------------------------------------------------
+Fire duration binary classification with LightGBM accuracy results: 
+
+=== TEST METRICS ===
+Accuracy           : 0.673
+Balanced Accuracy  : 0.584
+F1 (positive class): 0.400
+ROC AUC            : 0.622
+
+Confusion Matrix [[tn, fp],[fn, tp]]:
+ [[31  7]
+ [11  6]]
+
+Classification Report:
+               precision    recall  f1-score   support
+
+           0      0.738     0.816     0.775        38
+           1      0.462     0.353     0.400        17
+
+    accuracy                          0.673        55
+   macro avg      0.600     0.584     0.588        55
+weighted avg      0.653     0.673     0.659        55
+
+--------------------------------------------------------------------------------------
+
+
+Final firelikelihood model accuracy analysis: 
+[LightGBM] [Info] Total Bins 1093
+[LightGBM] [Info] Number of data points in the train set: 11241, number of used features: 12
+[LightGBM] [Info] [binary:BoostFromScore]: pavg=0.331643 -> initscore=-0.700763
+[LightGBM] [Info] Start training from score -0.700763
+
+=== MODEL LEADERBOARD (CV ROC AUC) ===
+               Model  CV_ROC_AUC
+    GradientBoosting    0.828020
+             XGBoost    0.827258
+        RandomForest    0.826306
+  LogisticRegression    0.824387
+            LightGBM    0.818433
+HistGradientBoosting    0.817849
+                 SVC    0.795586
+
+=== BEST MODEL ===
+GradientBoosting {'model__learning_rate': 0.05, 'model__max_depth': 3, 'model__n_estimators': 100}
+
+=== TEST PERFORMANCE ===
+Accuracy: 0.764
+F1 Score: 0.624
+ROC AUC : 0.824
+
+Confusion Matrix:
+[[2128  376]
+ [ 509  734]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0      0.807     0.850     0.828      2504
+           1      0.661     0.591     0.624      1243
+
+    accuracy                          0.764      3747
+   macro avg      0.734     0.720     0.726      3747
+weighted avg      0.759     0.764     0.760      3747
+
+
+Saved best model → ml-model/fire_likeliness.joblib 
+----------------------------------------------------------------------------------------------
+
