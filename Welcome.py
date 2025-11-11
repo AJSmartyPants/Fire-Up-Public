@@ -2,10 +2,10 @@ import streamlit as st
 import pathlib
 from lib.theme import inject_theme
 
-APP_PATH = "http://localhost:8501/"
+APP_PATH = "https://fire-up.streamlit.app/" #change this url to a local one if you plan to test my code on your own machine
 st.set_page_config(
-    page_title="Fire Up — Welcome",
-    page_icon="🔥",
+    page_title="Fire Up",
+    page_icon="assets/Fire-Up-App-Logo.jpeg",
     layout="wide",
     initial_sidebar_state="auto",
 )
@@ -23,15 +23,14 @@ st.markdown(
 )
 
 PAGES = [
-    ("Home", "🔥", "pages/1_Home.py"),
-    ("Detections", "📡", "pages/2_Detections.py"),
-    ("Evacuation", "🧭", "pages/3_Evacuation.py"),
-    ("Fire Guide", "📚", "pages/4_Fire_Guide.py"),
-    ("SOS", "🚨", "pages/5_SOS.py"),
-    ("About", "ℹ️", "pages/6_About.py"),
+    ("Home", "🔥", "pages/1_🔥 Home.py", "Home"),
+    ("Detections", "📡", "pages/2_📡 Detections.py", "Detections"),
+    ("Evacuation", "🧭", "pages/3_🧭 Evacuation.py", "Evacuation"),
+    ("Fire Guide", "📚", "pages/4_📚 Fire_Guide.py", "Fire_Guide"),
+    ("SOS", "🚨", "pages/5_🚨 SOS.py", "SOS"),
+    ("About", "ℹ️", "pages/6_ℹ️ About.py", "About"),
 ]
-
-# Grid styling with large tiles that feel like cells, not buttons
+#3x2 grid of cells
 st.markdown(
     """
     <style>
@@ -75,12 +74,9 @@ st.markdown(
 with st.container():
     st.markdown("<div class='grid'>", unsafe_allow_html=True)
 
-    rows = [st.columns(3)]  # 3×2 grid
-    for i, (label, emoji, path) in enumerate(PAGES[:3]):
+    rows = [st.columns(3)] 
+    for i, (label, emoji, path, slug) in enumerate(PAGES[:3]):
         col = rows[0][i % 3]
-        slug = pathlib.Path(path).stem
-        if "_" in slug:
-            slug = slug.split("_", 1)[1]
         href = f"{APP_PATH}{slug}"
         with col:
             st.markdown(
@@ -97,11 +93,8 @@ with st.container():
     st.markdown("</div>", unsafe_allow_html=True)
     st.write("")
     rows2 = [st.columns(3)]
-    for i, (label, emoji, path) in enumerate(PAGES[3:]):
+    for i, (label, emoji, path, slug) in enumerate(PAGES[3:]):
         col = rows2[0][i % 3]
-        slug = pathlib.Path(path).stem
-        if "_" in slug:
-            slug = slug.split("_", 1)[1]
         href = f"{APP_PATH}{slug}"
         with col:
             st.markdown(

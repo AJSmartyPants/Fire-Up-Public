@@ -1,4 +1,4 @@
-import io, json, requests, pandas as pd
+import os, io, math, json, requests, pandas as pd
 import streamlit as st
 import folium
 from streamlit_folium import st_folium, folium_static
@@ -8,9 +8,8 @@ from shapely.geometry import Point
 from shapely.ops import transform as shp_transform
 from pyproj import Transformer
 
-# --- CONFIG ---
 st.set_page_config(
-    page_title="Fire Up - Evacuation Routes",
+    page_title="🧭 Evacuation Routes - Fire Up",
     page_icon="assets/Fire-Up-App-Logo.jpeg",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -19,14 +18,14 @@ inject_theme()
 st.header("Evacuation Routes")
 st.caption("Click a destination on the left map or type an address. The route avoids locations of active fires.")
 
-# Secrets / env
-GEOAPIFY_KEY = "APIKEY"
-FIRMS_MAP_KEY = "APIKEY"  # https://firms.modaps.eosdis.nasa.gov/
+#setup
+GEOAPIFY_KEY = "ENTER_API_KEY"
+FIRMS_MAP_KEY = "ENTER_MAP_KEY"  # https://firms.modaps.eosdis.nasa.gov/
 FIRMS_PRODUCT = "VIIRS_SNPP_NRT"
 FIRMS_LOOKBACK_DAYS = 3
-FIRE_BUFFER_KM = 1.0  # for drawing circles (visualization only)
+FIRE_BUFFER_KM = 1.0  #for drawing circles (visualization only)
 
-# Projections for accurate circle drawing
+#Projections for accurate circle drawing
 _to3857 = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform
 _to4326 = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True).transform
 
@@ -34,9 +33,9 @@ def buffer_point_km(lat: float, lon: float, radius_km: float):
     p = Point(lon, lat)
     p_merc = shp_transform(_to3857, p)
     buf_merc = p_merc.buffer(radius_km * 1000.0)
-    return shp_transform(_to4326, buf_merc)  # shapely polygon (WGS84)
+    return shp_transform(_to4326, buf_merc)  #shapely polygon (WGS84)
 
-# --- Geocoder (typed address) ---
+#geocoder for typed address
 def quick_geocode(query: str):
     if not query.strip():
         return None
@@ -53,7 +52,7 @@ def quick_geocode(query: str):
     except Exception:
         return None
 
-# --- FIRMS helpers ---
+#FIRMS processing
 def bbox_from_points(p1, p2, pad_km=30):
     pad_deg = pad_km / 111.0
     lats = [p1[0], p2[0]]
@@ -83,15 +82,12 @@ def fetch_firms_points_near(start, end, lookback_days=FIRMS_LOOKBACK_DAYS, produ
     except Exception:
         return pd.DataFrame(columns=["latitude","longitude","frp"])
 
-# --- Geoapify Routing ---
-# Docs: avoid parameter supports "tolls|ferries|highways|location:lat,lon" etc. We'll pass each fire point as an avoid location.
-# Example: ...&avoid=location:35.234045,-80.836392|location:35.22,-80.83 ...
-# (Note: Avoids are soft constraints; if no alternative exists, the engine may still pass near) :contentReference[oaicite:1]{index=1}
+#Geoapify routing 
 def build_avoid_param_from_fires(fire_df, max_locations=80):
     if fire_df is None or fire_df.empty:
         return None
-    # keep up to max_locations nearest to the straight line (simple heuristic)
-    # here we just take the first N for simplicity
+    #keep up to max_locations nearest to the straight line 
+    #take first N
     vals = []
     cnt = 0
     for _, row in fire_df.iterrows():
@@ -115,8 +111,8 @@ def geoapify_route(start, dest, avoid_param=None, mode="drive", fmt="geojson"):
     return r.json()
 
 def parse_geoapify_geojson_to_latlon_list(geojson_obj):
-    # Geoapify GeoJSON returns MultiLineString route(s) in features[0]["geometry"]["coordinates"]
-    # Coordinates are [lon, lat] -> convert to [lat, lon]
+    #Geoapify GeoJSON returns MultiLineString route(s) in features[0]["geometry"]["coordinates"]
+    #Convert coords to lat, lon
     try:
         features = geojson_obj.get("features", [])
         if not features: return []
@@ -128,17 +124,12 @@ def parse_geoapify_geojson_to_latlon_list(geojson_obj):
     except Exception:
         return []
 
-# --- Get user location (browser) ---
 loc = streamlit_js_eval.get_geolocation()
-try:
-    ulat = float(loc["coords"]["latitude"])
-    ulon = float(loc["coords"]["longitude"])
-except Exception:
-    ulat, ulon = 34.1425, -118.0280  # fallback: Arcadia, CA
+ulat = float(loc["coords"]["latitude"])
+ulon = float(loc["coords"]["longitude"])
 
 start = (ulat, ulon)
 
-# --- UI (two columns) ---
 left, right = st.columns([0.55, 0.45])
 
 with left:
@@ -147,7 +138,7 @@ with left:
     m_click = folium.Map(location=[ulat, ulon], zoom_start=12, tiles="cartodbpositron")
     folium.Marker([ulat, ulon], tooltip="You (start)", icon=folium.Icon(color="green")).add_to(m_click)
     m_click.add_child(folium.LatLngPopup())
-    click_state = st_folium(m_click, height=450)  # interactive map
+    click_state = st_folium(m_click, height=450)  
 
     st.write("")
     dest_query = st.text_input("…or type a destination (address/place)")
@@ -155,7 +146,7 @@ with left:
 with right:
     st.markdown("**2) Final route** (right map)")
 
-# Determine destination from click or geocode
+#Determine destination from click or geocode
 dest = None
 if click_state and click_state.get("last_clicked"):
     dest = (click_state["last_clicked"]["lat"], click_state["last_clicked"]["lng"])
@@ -163,28 +154,28 @@ elif dest_query:
     g = quick_geocode(dest_query)
     if g: dest = g
 
-go = st.button("Generate Route")
+go = st.button("Generate Geoapify Route (avoid active fires)")
 
-# --- Action: compute & render ---
+#Compute and render
 if go and not GEOAPIFY_KEY:
     st.error("Missing GEOAPIFY_KEY. Add it to Streamlit secrets.")
 elif go and not dest:
     st.warning("Please click a destination on the left map or type an address I can geocode.")
 elif go and dest:
-    # Fetch recent FIRMS fires near start-dest corridor
+    #fetch recent FIRMS fires near start-dest corridor
     fires = fetch_firms_points_near(start, dest)
     avoid_param = build_avoid_param_from_fires(fires)
 
-    # Call Geoapify route with avoid=location:lat,lon list (supported by Routing API) :contentReference[oaicite:2]{index=2}
+    #call Geoapify route with avoid=location:lat,lon list (supported by Routing API) :contentReference[oaicite:2]{index=2}
     route_geojson = geoapify_route(start, dest, avoid_param=avoid_param, mode="drive", fmt="geojson")
     route_latlon = parse_geoapify_geojson_to_latlon_list(route_geojson)
 
-    # Build the rendered map (folium_static)
+    #build the rendered map (folium_static)
     m_out = folium.Map(location=[ulat, ulon], zoom_start=12, tiles="cartodbpositron")
     folium.Marker([ulat, ulon], tooltip="You (start)", icon=folium.Icon(color="green")).add_to(m_out)
     folium.Marker(dest, tooltip="Destination", icon=folium.Icon(color="blue")).add_to(m_out)
 
-    # Draw fires + 1 km circles
+    #draw fires + 1 km circles
     if fires is not None and not fires.empty:
         for _, row in fires.iterrows():
             lat, lon = float(row["latitude"]), float(row["longitude"])
@@ -195,12 +186,11 @@ elif go and dest:
                 style_function=lambda _: {"fillColor": "#ff0000", "color": "#ff0000", "weight": 1, "fillOpacity": 0.15}
             ).add_to(m_out)
 
-    # Draw route
+    #draw route
     if route_latlon:
         folium.PolyLine(route_latlon, color="blue", weight=6, opacity=0.95, tooltip="Evacuation route").add_to(m_out)
     else:
         folium.map.Popup("No route returned (try moving destination slightly or reduce avoids).").add_to(m_out)
-
-    # Render on the right with folium_static
+        
     with right:
         folium_static(m_out, width=720, height=500)

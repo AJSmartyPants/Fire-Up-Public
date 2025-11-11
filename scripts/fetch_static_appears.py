@@ -1,10 +1,9 @@
 import os, json, time, csv, pathlib, requests
 import pandas as pd
 
-# ================== CONFIG ==================
 API   = "https://appeears.earthdatacloud.nasa.gov/api/"
-USER  = "USERNAME"
-PWD   = "PASSWORD"
+USER  = "USERID"
+PWD   = "PWD"
 
 CENTROIDS_CSV = "data/ca_centroids.csv"
 OUT_CSV       = "data/ca_static_appeears.csv"
@@ -15,13 +14,12 @@ LAYERS = [
     {"product": "MOD44B.061",  "layer": "Percent_Tree_Cover"},
 ]
 
-# 👉 AppEEARS requires MM-DD-YYYY
+#AppEEARS requires MM-DD-YYYY
 DATE_START = "01-01-2024"
 DATE_END   = "12-31-2024"
 
 POLL_EVERY_SEC = 15
 
-# ================== AUTH ==================
 def get_token():
     r = requests.post(API + "login", auth=(USER, PWD), timeout=60)
     if r.status_code >= 400:
@@ -31,9 +29,7 @@ def get_token():
 def head(token):
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-# ================== HELPERS ==================
 def _assert_mmddyyyy(s: str):
-    # very light format check
     m, d, y = s.split("-")
     assert len(m) == 2 and len(d) == 2 and len(y) == 4, "Use MM-DD-YYYY"
 
@@ -58,7 +54,7 @@ def submit_task(head, task_name, coords):
 def poll_until_done(head, task_id):
     while True:
         r = requests.get(API + f"task/{task_id}", headers=head, allow_redirects=False, timeout=60)
-        if r.status_code == 303:  # some tasks redirect when done
+        if r.status_code == 303: 
             return
         if r.status_code >= 400:
             raise RuntimeError(f"Poll error {r.status_code}: {r.text[:500]}")
@@ -95,7 +91,6 @@ def download_csvs(head, task_id, dest_dir):
         csv_paths.append(dest)
     return csv_paths
 
-# ================== MAIN ==================
 def main():
     token = get_token()
     HEAD = head(token)

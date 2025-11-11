@@ -18,17 +18,11 @@ from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 
-# ======================
-# Config
-# ======================
 CSV = "ml-model/CA_Weather_Fire_Dataset_1984-2025.csv"
 TARGET = "FIRE_START_DAY"
 OUT_MODEL = "ml-model/fire_likeliness.joblib"
 OUT_META  = "ml-model/fire_likeliness_meta.json"
 
-# ======================
-# Load & add SEASON
-# ======================
 df = pd.read_csv(CSV)
 df.columns = [c.strip().upper() for c in df.columns]
 
@@ -49,23 +43,14 @@ CAT_FEATURES = ["SEASON"]
 X = df[NUM_FEATURES + CAT_FEATURES]
 y = df[TARGET].astype(int)
 
-# ======================
-# Split
-# ======================
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, stratify=y, test_size=0.25, random_state=42
 )
 
-# ======================
-# Preprocess
-# ======================
 num = Pipeline([("imp", SimpleImputer(strategy="median")), ("sc", StandardScaler())])
 cat = Pipeline([("imp", SimpleImputer(strategy="most_frequent")), ("oh", OneHotEncoder(handle_unknown="ignore"))])
 pre = ColumnTransformer([("num", num, NUM_FEATURES), ("cat", cat, CAT_FEATURES)])
 
-# ======================
-# Model candidates + small grids
-# ======================
 candidates = {
     "LogisticRegression": (
         LogisticRegression(max_iter=2000),
@@ -118,9 +103,6 @@ for name, (model, grid) in candidates.items():
         best_est    = search.best_estimator_
         best_params = search.best_params_
 
-# ======================
-# Leaderboard + pick best
-# ======================
 lb = pd.DataFrame(leaderboard, columns=["Model", "CV_ROC_AUC"]).sort_values("CV_ROC_AUC", ascending=False)
 print("\n=== MODEL LEADERBOARD (CV ROC AUC) ===")
 print(lb.to_string(index=False))
@@ -128,9 +110,6 @@ print(lb.to_string(index=False))
 print("\n=== BEST MODEL ===")
 print(best_name, best_params)
 
-# ======================
-# Test-set evaluation
-# ======================
 y_pred  = best_est.predict(X_test)
 y_proba = best_est.predict_proba(X_test)[:, 1]
 
@@ -143,9 +122,6 @@ print(confusion_matrix(y_test, y_pred))
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred, digits=3))
 
-# ======================
-# Save
-# ======================
 Path("ml-model").mkdir(exist_ok=True)
 joblib.dump(best_est, OUT_MODEL)
 with open(OUT_META, "w") as f:

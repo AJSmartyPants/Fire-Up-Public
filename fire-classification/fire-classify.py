@@ -1,22 +1,17 @@
-#!/usr/bin/env python3
-import os, json, numpy as np, tensorflow as tf
+import json, numpy as np, tensorflow as tf
 from tensorflow import keras
 from pathlib import Path
 
-# Optional: Force CPU if GPU/MPS causes memory spikes
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-# os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 #github data folder is empty due to storage limitations; can be found on Kaggle
 TRAIN_DIR = "fire-classification/data/train"
 TEST_DIR  = "fire-classification/data/test"
-IMG_SIZE  = 160        # smaller image size
-BATCH     = 8          # smaller batch size
-EPOCHS    = 8          # fewer epochs initially
+IMG_SIZE  = 160    
+BATCH     = 8     
+EPOCHS    = 8    
 MODEL_PATH  = "fire-classification/fire-classify.keras"
 LABELS_PATH = "fire-classification/labels.json"
 
-# 1) Train/Val loaders (10% val from train)
 train_full = keras.utils.image_dataset_from_directory(
     TRAIN_DIR,
     image_size=(IMG_SIZE, IMG_SIZE),
@@ -36,7 +31,6 @@ val_ds = keras.utils.image_dataset_from_directory(
     seed=42
 )
 
-# 2) Test loader (independent)
 test_ds = keras.utils.image_dataset_from_directory(
     TEST_DIR,
     image_size=(IMG_SIZE, IMG_SIZE),
@@ -53,17 +47,15 @@ assert class_names == test_ds.class_names, "Train/test class sets must match."
 with open(LABELS_PATH, "w") as f:
     json.dump(class_names, f)
 
-# Light prefetch only — no caching to reduce memory usage
 train_ds = train_full.shuffle(256).prefetch(1)
 val_ds   = val_ds.prefetch(1)
 test_ds  = test_ds.prefetch(1)
 
-# 3) Model (MobileNetV2 smaller version)
 base = keras.applications.MobileNetV2(
     input_shape=(IMG_SIZE, IMG_SIZE, 3),
     include_top=False,
     weights="imagenet",
-    alpha=0.5  # half-width MobileNet for smaller memory footprint
+    alpha=0.5  
 )
 base.trainable = False
 
@@ -87,12 +79,11 @@ model.compile(
     optimizer=keras.optimizers.Adam(1e-3),
     loss="categorical_crossentropy",
     metrics=["accuracy"],
-    run_eagerly=False  # keeps memory lower
+    run_eagerly=False 
 )
 
 model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS)
 
-# 4) Light fine-tuning (optional; small unfreeze)
 base.trainable = True
 for layer in base.layers[:-20]:
     layer.trainable = False
@@ -104,12 +95,10 @@ model.compile(
 )
 model.fit(train_ds, validation_data=val_ds, epochs=2)
 
-# 5) Save model + labels
 model.save(MODEL_PATH)
 print("Saved model:", MODEL_PATH)
 print("Saved labels:", LABELS_PATH)
 
-# 6) Evaluate on TEST
 y_true = []
 for _, y in test_ds:
     y_true.append(y.numpy())

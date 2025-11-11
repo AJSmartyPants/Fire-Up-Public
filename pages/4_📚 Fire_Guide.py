@@ -4,7 +4,7 @@ from lib.theme import inject_theme
 from datetime import datetime
 
 st.set_page_config(
-    page_title="Fire Up - Fire Guide",
+    page_title="📚 Fire Guide - Fire Up",
     page_icon="assets/Fire-Up-App-Logo.jpeg",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -14,7 +14,7 @@ inject_theme()
 st.subheader("Fire Guide")
 st.caption("Stay ready: essentials, preparation, checklists, and resources")
 
-# --- Quick-Start Panel (kept & expanded) ---
+#quickstart
 st.markdown("""
 <div class="panel">
   <div><strong>What You Must Know (Default)</strong></div>
@@ -31,7 +31,7 @@ st.markdown(
 """
 )
 
-# Quick resource buttons
+#resource buttons →
 qcols = st.columns(4)
 with qcols[0]:
     ui.button("Ready.gov Wildfires", key="readygov_btn")
@@ -48,11 +48,10 @@ with qcols[3]:
 
 st.divider()
 
-# --- Helper: a small gallery function ---
 def img_card(url, caption=""):
     st.image(url, use_container_width=True, caption=caption)
 
-# --- Tabs for sections ---
+#sections
 tabs = st.tabs([
     "🏠 Preparation",
     "🔥 During a Fire",
@@ -67,7 +66,7 @@ tabs = st.tabs([
     "📚 Glossary & Myths"
 ])
 
-# 1) Preparation
+#Preparation
 with tabs[0]:
     st.header("Preparation")
     st.markdown("""
@@ -78,7 +77,7 @@ with tabs[0]:
 - **Practice**: 10-minute evacuation drill, pet carriers ready, garage manual release tested.
 """)
 
-    # Downloadable checklist
+    #Downloadable checklist
     go_bag = """Go-Bag Checklist
 - Water (4 L/person/day)
 - Shelf-stable food (3 days)
@@ -120,7 +119,7 @@ with tabs[0]:
 - [NFPA Home Ignition Zone](https://www.nfpa.org/hiz)
 """)
 
-# 2) During a Fire
+#During a Fire
 with tabs[1]:
     st.header("During a Fire")
     st.markdown("""
@@ -137,7 +136,7 @@ with tabs[1]:
 """)
     st.image("https://upload.wikimedia.org/wikipedia/commons/2/26/Wildfire_in_California.jpg", use_container_width=True, caption="Active wildfire (credit: Wikimedia Commons)")
 
-# 3) Evacuation & Routes
+#Evacuation & Routes
 with tabs[2]:
     st.header("Evacuation & Routes")
     st.markdown("""
@@ -168,7 +167,7 @@ with tabs[2]:
 - Check your **County OES** / Sheriff alerts.
 """)
 
-# 4) Air Quality & Masks
+#Air Quality & Masks
 with tabs[3]:
     st.header("Air Quality & Masks")
     st.markdown("""
@@ -188,7 +187,7 @@ with tabs[3]:
 - [CDC: Wildfire Smoke](https://www.cdc.gov/air/wildfires/index.html)
 """)
 
-# 5) Home Hardening
+#Home Hardening
 with tabs[4]:
     st.header("Home Hardening")
     st.markdown("""
@@ -211,7 +210,7 @@ with tabs[4]:
 - [NFPA: Hardening Your Home](https://www.nfpa.org/hiz)
 """)
 
-# 6) Pets & Livestock
+#Pets & Livestock
 with tabs[5]:
     st.header("Pets & Livestock")
     st.markdown("""
@@ -226,7 +225,7 @@ with tabs[5]:
 """)
     st.image("https://upload.wikimedia.org/wikipedia/commons/6/6e/Cat_in_carrier.jpg", use_container_width=True, caption="Carrier prep saves time (credit: Wikimedia Commons)")
 
-# 7) Power & Generators
+#Power & Generators
 with tabs[6]:
     st.header("Power & Generators")
     st.markdown("""
@@ -240,7 +239,7 @@ with tabs[6]:
 """)
     st.image("https://upload.wikimedia.org/wikipedia/commons/6/62/Portable_generator.jpg", use_container_width=True, caption="Portable generator (credit: Wikimedia Commons)")
 
-# 8) Insurance & Docs
+#Insurance & Docs
 with tabs[7]:
     st.header("Insurance & Documentation")
     st.markdown(f"""
@@ -254,7 +253,7 @@ with tabs[7]:
 - Contact your insurer for a **Wildfire Endorsement** or FAIR plan (availability varies).
 """)
 
-# 9) Mental Health
+#Mental Health
 with tabs[8]:
     st.header("Mental Health")
     st.markdown("""
@@ -268,7 +267,7 @@ with tabs[8]:
 - Local county mental health services / school counselors.
 """)
 
-# 10) Community & Volunteering
+#Community & Volunteering
 with tabs[9]:
     st.header("Community & Volunteering")
     st.markdown("""
@@ -282,7 +281,7 @@ with tabs[9]:
 - Your **County Fire Safe Council** or **COAD/VOAD** network.
 """)
 
-# 11) Glossary & Myths
+#Glossary & Myths
 with tabs[10]:
     st.header("Glossary & Myths")
     st.markdown("""
@@ -300,7 +299,6 @@ with tabs[10]:
 
 st.divider()
 
-# --- Share & Footer (kept structure) ---
 cols2 = st.columns([0.7, 0.3])
 with cols2[1]:
     ui.button("Share", key="share_btn")

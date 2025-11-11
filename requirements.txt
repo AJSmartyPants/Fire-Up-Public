@@ -1,0 +1,19 @@
+streamlit==1.47.0
+streamlit-shadcn-ui
+streamlit-js-eval
+streamlit-folium
+streamlit-autorefresh
+pandas
+numpy
+joblib
+requests
+datetime
+shapely
+pyproj
+plotly
+folium
+opencv-python-headless
+tensorflow
+scikit-learn
+lightgbm==4.5.0
+#FYI: I made this in Python 3.11.1

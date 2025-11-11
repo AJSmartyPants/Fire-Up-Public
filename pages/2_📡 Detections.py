@@ -8,7 +8,7 @@ from lib.theme import inject_theme
 import tensorflow as tf
 
 st.set_page_config(
-    page_title="Fire Up - Detection Page",
+    page_title="📡 Detection Page - Fire Up",
     page_icon="assets/Fire-Up-App-Logo.jpeg",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -30,7 +30,7 @@ if not pi_url:
     st.info("Start your Pi server and paste its URL above.")
     st.stop()
 
-# ========== MODEL ==========
+#setup
 MODEL_PATH = Path("models/fire-classify.keras")
 LABELS_PATH = Path("models/labels.json")
 
@@ -45,7 +45,7 @@ def load_model_and_labels():
 
 def preprocess_for_model(bgr, model):
     ishape = model.input_shape
-    if isinstance(ishape, list):  # handle multiple inputs
+    if isinstance(ishape, list): 
         ishape = ishape[0]
     h, w = ishape[1], ishape[2]
 
@@ -56,7 +56,7 @@ def preprocess_for_model(bgr, model):
     crop = bgr[y0:y0+side, x0:x0+side]
     resized = cv2.resize(crop, (w, h), interpolation=cv2.INTER_AREA)
     rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-    return (rgb.astype(np.float32))[None, ...]
+    return (rgb.astype(np.float32) / 255.0)[None, ...]
 
 def fmt(val, suffix=""):
     if val is None:
@@ -86,7 +86,7 @@ def last_hms(iso_str):
 
 c1, c2 = st.columns([0.6, 0.4])
 
-# ========= CAMERA + INFERENCE ==========
+#camera & inference
 with c1:
     st.markdown("""
     <div class="panel">
@@ -99,69 +99,43 @@ with c1:
         unsafe_allow_html=True
     )
     st.divider()
-    # --- On-Demand Inference ---
     st.subheader("On-Demand Inference")
 
     model_ok = True
     try:
-        model, labels = load_model_and_labels()  # your cached loader
+        model, labels = load_model_and_labels()
     except Exception as e:
         model_ok = False
         st.error(f"Model not loaded: {e}\nExpected at: {MODEL_PATH}")
         labels = ["nothing", "smoke", "fire"]
 
-    if st.button("Analyze Latest Frame", key="analyze"):
+    if st.button("Analyze Latest Frame"):
         try:
-            # ---- cache-bust the frame so we don’t reclassify an old image
-            ts = int(time.time() * 1000)
-            jpg = requests.get(f"{pi_url}/frame.jpg?ts={ts}", timeout=6).content
-
+            jpg = requests.get(f"{pi_url}/frame.jpg", timeout=5).content
             arr = np.frombuffer(jpg, dtype=np.uint8)
             bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-            if bgr is None:
-                raise RuntimeError("Could not decode JPEG frame")
-
-            # show the exact snapshot we analyzed
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
             st.image(rgb, caption="Snapshot used for inference", use_container_width=True)
 
             if model_ok:
-                x = preprocess_for_model(bgr, model)  # your preprocessor
+                x = preprocess_for_model(bgr, model)
                 probs = model.predict(x, verbose=0)[0]
                 idx = int(np.argmax(probs))
                 label = labels[idx] if idx < len(labels) else f"class_{idx}"
                 conf = float(probs[idx])
 
-                # ---- overwrite session_state with the NEW result
-                st.session_state["last_pred"] = {
-                    "label": label,
-                    "conf": conf,
-                    "probs": probs.tolist(),
-                    "labels": labels,
-                    "ts": ts,  # store when we made this prediction
-                }
-
-                # ---- immediately rerun so the persisted result shows up even with autorefresh
-                st.rerun()
+                ui.metric_card(
+                    title="Detection Result",
+                    content=f"{label.upper()} ({conf*100:.1f}%)",
+                    description="Based on latest frame",
+                    key="pd_detection",
+                )
+                st.bar_chart({labels[i]: float(probs[i]) for i in range(len(probs))})
 
         except Exception as e:
             st.error(f"Failed to fetch or analyze frame: {e}")
 
-    # Always show the last stored result (persists across reruns)
-    if "last_pred" in st.session_state:
-        lp = st.session_state["last_pred"]
-        ui.metric_card(
-            title="Detection Result",
-            content=f"{lp['label'].upper()} ({lp['conf']*100:.1f}%)",
-            description=(
-                f"Last analyzed @ {datetime.fromtimestamp(lp.get('ts', time.time())/1000).strftime('%H:%M:%S')}"
-                if lp.get("ts") else "Last analyzed"
-            ),
-            key="pd_detection",
-        )
-        st.bar_chart({lp["labels"][i]: lp["probs"][i] for i in range(len(lp["labels"]))})
-
-# ========= SENSOR READINGS ==========
+#sensor readings
 with c2:
     st.markdown("""
     <div class="panel">
@@ -208,7 +182,7 @@ with c2:
         key="pd_fps",
     )
 
-# ========= DRONE PLACEHOLDER ==========
+#drone placeholder
 st.subheader("Sample Drone Integration")
 st.caption("Preview how users would track drone swarms and incidents")
 

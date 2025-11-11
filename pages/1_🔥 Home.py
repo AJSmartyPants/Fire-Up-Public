@@ -13,7 +13,7 @@ import joblib
 from datetime import datetime
 from lib.theme import inject_theme
 
-# Seed to control cache invalidation
+#control cache
 if "refresh_seed" not in st.session_state:
     st.session_state.refresh_seed = 0.0
 
@@ -24,7 +24,7 @@ def _fnum(x, default=math.nan):
     except (TypeError, ValueError):
         return default
 
-#SETUP 
+#setup 
 GEOJSON_PATH = "data/ca_regions.geojson"
 CENTROIDS_CSV = "data/ca_centroids.csv"
 LIKELINESS_MODEL_PATH = "models/fire_likeliness.joblib"
@@ -55,18 +55,18 @@ def _predict_generic(df: pd.DataFrame, model):
 
     X = df.copy()
 
-    # add any missing columns as NaN
+    #add missing columns as NaN
     for c in required:
         if c not in X.columns:
             X[c] = np.nan
 
-    # order columns exactly as required
+    #order columns exactly as required
     X = X[required]
 
-    # force numeric (keeps NaN for non-parsable values)
+    #all numbers for model
     X = X.apply(pd.to_numeric, errors="coerce")
 
-    # predict
+    #predict
     if hasattr(model, "predict_proba"):
         y = model.predict_proba(X)[:, 1]
     else:
@@ -88,19 +88,19 @@ FEATURE_COLS = [
     "LAGGED_AVG_WIND_SPEED", "SEASON"
 ]
 
-# --- utility: season from month
+#make season column
 def _season_from_month(m: int) -> str:
     if m in (12,1,2):  return "WINTER"
     if m in (3,4,5):   return "SPRING"
     if m in (6,7,8):   return "SUMMER"
     return "FALL"
 
-# --- cache the model once per session
+#cache model once per session
 @st.cache_resource(show_spinner=False)
 def _load_model():
     return joblib.load(LIKELINESS_MODEL_PATH)
 
-# --- cache each (lat, lon) fetch; seed participates in the cache key
+#cache each (lat, lon) fetch 
 @st.cache_data(show_spinner=False)
 def _fetch_open_meteo(lat: float, lon: float, seed: float) -> dict:
     url = "https://api.open-meteo.com/v1/forecast"
@@ -121,9 +121,9 @@ def _fetch_open_meteo(lat: float, lon: float, seed: float) -> dict:
         "timezone": "auto",
         "past_days": 1,
         "forecast_days": 1,
-        # seed is only to vary the cache key; it’s unused in the request
+        #seed is only to vary the cache key; it’s unused in the request
     }
-    r = requests.get(url, params=params, timeout=20)
+    r = requests.get(url, params=params, timeout=60)
     r.raise_for_status()
     d = r.json().get("daily", {}) or {}
 
@@ -175,7 +175,7 @@ def _features_from_open_meteo(lat: float, lon: float, seed: float) -> dict:
         month = datetime.now().month
     season = _season_from_month(month)
 
-    # Base dict
+    #Base dictionary
     feats = {
         "PRECIPITATION": w["today"]["PRECIPITATION"],
         "MAX_TEMP": t_max,
@@ -187,24 +187,23 @@ def _features_from_open_meteo(lat: float, lon: float, seed: float) -> dict:
         "LAGGED_AVG_WIND_SPEED": lag_wind,
         "SEASON": season,
 
-        # Open-Meteo “om_*” features you listed
+        #Open-Meteo “om_*” features 
         "om_temp_max_c": t_max,
-        "om_wind_speed_max_ms": wind,  # (mean used as proxy; replace if you prefer max)
+        "om_wind_speed_max_ms": wind, 
         "om_soil_temp_mean_c": w["today"]["om_soil_temp_mean_c"],
         "om_rel_humidity_mean": w["today"]["om_rel_humidity_mean"],
         "om_vpd_max_kpa": w["today"]["om_vpd_max_kpa"],
         "om_soil_moisture_0_7cm_mean": w["today"]["om_soil_moisture_0_7cm_mean"],
 
-        # Placeholders for features not provided by Open-Meteo (fill if you have another source)
+        #Unfortunately, I was unable to access the ET data because of API limits
         "ET_500m": math.nan,
         "FIRE_PROB": math.nan,
     }
 
-    # LST is soil temp per your note
+    #Unable to access LST data from AppEEARS realtime as of now
     feats["LST_Day_1km"] = feats["om_soil_temp_mean_c"]
 
-    # Derived combos (will be completed after we merge NDVI)
-    # We'll set them to NaN here; they’ll be recomputed after static merge.
+    #Derived combos (will be completed after merging NDVI)
     feats["LSTxNDVI"] = math.nan
     feats["VPDxNDVI"] = math.nan
     feats["LSTxVPD"]  = math.nan
@@ -241,7 +240,7 @@ def load_centroids(path):
 
 @st.cache_data(show_spinner=True)
 def build_features_for_centroids(centroids_df: pd.DataFrame, seed: float) -> pd.DataFrame:
-    # --- fetch Open-Meteo features for every centroid ---
+    #fetch Open-Meteo features for every centroid
     rows = []
     total = len(centroids_df)
     pb = st.progress(0, text="Fetching weather features…")
@@ -253,15 +252,15 @@ def build_features_for_centroids(centroids_df: pd.DataFrame, seed: float) -> pd.
         rows.append(out)
         if i % 5 == 0 or i == total - 1:
             pb.progress((i + 1) / total)
-        time.sleep(0.01)  # polite
+        time.sleep(0.01) 
 
     pb.empty()
     feats_df = pd.DataFrame(rows)
 
-    # --- predict likelihood (0–100) ---
+    #predict likelihood (0–100)
     feats_df["likelihood"] = _predict_likeliness(feats_df)
 
-    # --- merge STATIC AppEARS ON REGION_ID ONLY ---
+    #merge static AppEARS data
     static = pd.read_csv("data/ca_static_appears.csv")  # must have: region_id, LC_Type1, NDVI, Percent_Tree_Cover
     if "region_id" not in feats_df.columns:
         raise RuntimeError("centroids / features are missing region_id; required for static merge.")
@@ -272,13 +271,13 @@ def build_features_for_centroids(centroids_df: pd.DataFrame, seed: float) -> pd.
         validate="m:1"
     )
 
-    # --- combos (LST is soil temp by your rule) ---
+    #combos 
     feats_df["LST_Day_1km"] = feats_df["om_soil_temp_mean_c"]
     feats_df["LSTxNDVI"]    = feats_df["LST_Day_1km"] * feats_df["NDVI"]
     feats_df["VPDxNDVI"]    = feats_df["om_vpd_max_kpa"] * feats_df["NDVI"]
     feats_df["LSTxVPD"]     = feats_df["LST_Day_1km"] * feats_df["om_vpd_max_kpa"]
 
-    # --- acres & duration models (use likelihood as 0–1) ---
+    #acres & duration models (use likelihood as 0–1)
     acres_model    = _load_acres_model()
     duration_model = _load_duration_model()
     df_for_downstream = feats_df.copy()
@@ -287,7 +286,7 @@ def build_features_for_centroids(centroids_df: pd.DataFrame, seed: float) -> pd.
     feats_df["pred_acres"]    = _predict_generic(df_for_downstream, acres_model)
     feats_df["pred_duration"] = _predict_generic(df_for_downstream, duration_model)
 
-    # --- WRITE the canonical latest snapshot ---
+    #write latest update for reference
     feats_df.to_csv("data/ca_features_latest.csv", index=False)
 
     return feats_df
@@ -297,21 +296,17 @@ def load_latest_features() -> pd.DataFrame:
 
 def render_ca_prediction_map():
     regions        = load_geojson(GEOJSON_PATH)
-    # try:
-    #     centroids = load_latest_features()
-    # except Exception:
-    #     # First-run fallback: build once, then read
     base_centroids = load_centroids(CENTROIDS_CSV)
     seed = st.session_state.get("refresh_seed", 0.0)
     build_features_for_centroids(base_centroids, seed)
     centroids = load_latest_features()
 
-    # (Optionally) compute the user point separately and append
+    #compute the user point separately and append
     seed = st.session_state.get("refresh_seed", 0.0)
     user_feats = _features_from_open_meteo(ulat, ulon, seed)
     user_feats["LST_Day_1km"] = user_feats["om_soil_temp_mean_c"]
 
-    # borrow nearest static just for the user pin
+    #borrow nearest static for the user pin
     static = pd.read_csv("data/ca_static_appears.csv")
     static["dist2"] = (static["lat"]-ulat)**2 + (static["lon"]-ulon)**2
     nearest = static.loc[static["dist2"].idxmin()]
@@ -341,7 +336,7 @@ def render_ca_prediction_map():
 
     centroids = pd.concat([centroids, user_row], ignore_index=True)
 
-    # ----- VIS -----
+    #VIS
     opacity_heat = st.slider("Heat opacity", 0.0, 1.0, 0.85, 0.05, key="heat_opacity")
 
     fire_scale = [
@@ -361,14 +356,14 @@ def render_ca_prediction_map():
 
     fig = go.Figure()
 
-    # === County fill by RELATIVE likelihood (per this view) ===
-    # compute per-county centroid row (join via region_id)
+    #county fill by relative likelihood 
+    #compute per-county centroid row (join via region_id)
     county_like = centroids.dropna(subset=["region_id"]).groupby("region_id", as_index=False)["likelihood"].mean()
     if "User" in county_like["region_id"].values:
         county_like = county_like[county_like["region_id"] != "User"]
 
     if not county_like.empty:
-        # relative scale 1..100 as requested
+        # relative scale 1-100 
         mn, mx = float(county_like["likelihood"].min()), float(county_like["likelihood"].max())
         if mx > mn:
             county_like["rel_like"] = 1.0 + 99.0 * (county_like["likelihood"] - mn) / (mx - mn)
@@ -403,8 +398,8 @@ def render_ca_prediction_map():
                                "<extra></extra>")
             ))
 
-    # === Heat radius by predicted ACRES ===
-    # Build quantile bins on acres → radius 25..90 px
+    #Heat radius by predicted acres
+    #Build quantile bins on acres, radius 25-90 px
     if "pred_acres" in centroids.columns:
         acres_bins = pd.qcut(centroids["pred_acres"].fillna(0.0), q=[0, .2, .4, .6, .8, 1.0], duplicates="drop")
         bin_centers = {}
@@ -414,7 +409,7 @@ def render_ca_prediction_map():
             radius_px = float(_scale_series(pd.Series([mid]), 25, 90, q=(0,1)).iloc[0])
             bin_centers[str(b)] = radius_px
 
-        # add one heat layer per bin
+        #add one heat layer per bin
         for b in acres_bins.cat.categories:
             mask = (acres_bins.astype(str) == str(b))
             sub  = centroids.loc[mask]
@@ -430,7 +425,7 @@ def render_ca_prediction_map():
                 showscale=False,
                 name="_heat"
             ))
-        # single colorbar (separate dummy coloraxis via a tiny hidden trace)
+        #single colorbar (separate dummy coloraxis via a tiny hidden trace)
         fig.add_trace(go.Densitymapbox(
             lat=[centroids["lat"].iloc[0]], lon=[centroids["lon"].iloc[0]], z=[centroids["likelihood"].iloc[0]],
             radius=1, colorscale=fire_scale, zmin=0, zmax=100, opacity=0.0, showscale=True,
@@ -438,7 +433,7 @@ def render_ca_prediction_map():
             name="_legend"
         ))
 
-    # === Centroid dots: size by DURATION, color by likelihood ===
+    #centroid dots: size by duration, color by likelihood
     size_by_duration = _scale_series(centroids["pred_duration"].fillna(0.0), 6, 20)
     fig.add_trace(go.Scattermapbox(
         lat=centroids["lat"], lon=centroids["lon"], mode="markers",
@@ -460,7 +455,7 @@ def render_ca_prediction_map():
         showlegend=False
     ))
 
-    # === Thin black outlines on top ===
+    #thin black outlines on top 
     fig.update_layout(mapbox_layers=[{
         "sourcetype": "geojson",
         "source": regions,
@@ -469,7 +464,7 @@ def render_ca_prediction_map():
         "line": {"width": 1},
     }])
 
-    # === User pin with full hover ===
+    #user pin with full hover 
     fig.add_trace(go.Scattermapbox(
         lat=[ulat], lon=[ulon], mode="markers+text",
         text=["Your Location"], textposition="top center",
@@ -482,7 +477,7 @@ def render_ca_prediction_map():
         showlegend=False
     ))
 
-    # Interactivity & layout
+    #interactivity & layout
     fig.update_layout(
         uirevision="keep",
         mapbox_style="open-street-map",
@@ -498,7 +493,7 @@ def render_ca_prediction_map():
 
 
 st.set_page_config(
-    page_title="Fire Up - Home",
+    page_title="🔥 Home - Fire Up",
     page_icon="assets/Fire-Up-App-Logo.jpeg",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -522,20 +517,18 @@ def col1():
     </div>
     """, unsafe_allow_html=True)
     st.write("")
-    #st.markdown("<div class='mapph'>[Map placeholder]</div>", unsafe_allow_html=True)
     render_ca_prediction_map()
     st.write("")
     if st.button("🔄 Refresh predictions"):
-        st.session_state.refresh_seed = time.time()  # new seed -> fresh fetch
+        st.session_state.refresh_seed = time.time()  #new seed makes fresh fetch
         st.success("Refreshing predictions…")
         st.rerun()
 
 
-FIRMS_URL = "https://firms.modaps.eosdis.nasa.gov/usfs/api/area/csv/985fe57bb9795551b826993c8d161cb2/VIIRS_SNPP_NRT/world/1"
+FIRMS_URL = "https://firms.modaps.eosdis.nasa.gov/usfs/api/area/csv/ENTER_YOUR_MAP_KEY/VIIRS_SNPP_NRT/world/2"
 @st.cache_data(ttl=3600, show_spinner=True)
 def load_firms_data(url):
     df = pd.read_csv(url)
-    # Combine date + time into a datetime
     df["acq_datetime"] = pd.to_datetime(df["acq_date"] + " " + df["acq_time"].astype(str).str.zfill(4),
                                         format="%Y-%m-%d %H%M", errors="coerce", utc=True)
     df = df.rename(columns={
@@ -590,8 +583,8 @@ def col2():
         hover_data=["acq_date", "acq_time", "satellite", "confidence"],
         color_continuous_scale="Turbo",
         opacity=0.7,
-        zoom=4,  # adjust this number for zoom level (higher = closer)
-        center=dict(lat=ulat, lon=ulon)  # center on user
+        zoom=4, 
+        center=dict(lat=ulat, lon=ulon) 
     )
 
     fig.update_layout(
@@ -600,7 +593,7 @@ def col2():
         coloraxis_colorbar=dict(title="FRP (MW)")
     )
 
-    # User location
+    #User location
     fig.add_trace(go.Scattermapbox(
         lat=[ulat],
         lon=[ulon],
@@ -611,7 +604,7 @@ def col2():
         name="Your Location"
     ))
 
-    # Dotted radius circle
+    #Dotted radius circle
     fig.add_trace(go.Scattermapbox(
         lat=circle_df["lat"],
         lon=circle_df["lon"],
