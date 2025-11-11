@@ -96,17 +96,18 @@ streamlit run Welcome.py
 ---
 
 ## 🧰 Repository Structure 
-Fire-Up-App/
+Fire-Up-Public/
 │
-├── pages/ # Streamlit app pages (Home, Detections, Evacuation, etc.)
-├── models/ # Pre-trained LightGBM models (.joblib) and CNN for fire/smoke classification in live feed
-├── data/ # Processed static + live datasets
-├── scripts/ # Helper scripts (AppEEARS fetch, preprocessing, etc.)
-├── lib/theme.py # Global CSS theme for consistent UI styling
-├── assets/ # App logo and media files
-├── Welcome.py # App entry point (landing page)
-├── requirements.txt # Dependencies for Streamlit deployment 
-└── ml-model/ # Scripts & results used for model training and evaluation 
+├── pages/             # Streamlit app pages (Home, Detections, Evacuation, etc.)
+├── models/            # Pre-trained LightGBM models (.joblib) and CNN for fire/smoke classification in live feed
+├── data/              # Processed static + live datasets
+├── scripts/           # Helper scripts (AppEEARS fetch, preprocessing, etc.)
+├── lib/
+│   └── theme.py       # Global CSS theme for consistent UI styling
+├── assets/            # App logo and media files
+├── Welcome.py         # App entry point (landing page)
+├── requirements.txt   # Dependencies for Streamlit deployment
+└── ml-model/          # Scripts & results used for model training and evaluation
 
 ## 💬 Feedback & Contact
 
