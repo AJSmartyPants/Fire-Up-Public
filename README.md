@@ -93,6 +93,152 @@ streamlit run Welcome.py
   - Run the provided ML scripts or notebooks  
   - Replace the existing model files under `models/`
 
+## 🍓 Raspberry Pi Integration (Live Detection Module)
+
+The Raspberry Pi module allows you to stream real-time environmental and camera data directly into the **Fire Up** app.
+It runs a local Flask server that the web app connects to in order to display live sensor data and video.
+
+The file used is located at:
+
+raspberry-pi-code/fire-up-raspberry-pi-code.py
+
+This script captures:
+
+* **Temperature & Humidity** from a DHT20 sensor
+* **Light intensity (lux)** from a BH1750 sensor
+* **Live video feed** from the Raspberry Pi camera
+* And exposes them via a Flask API that connects to Fire Up’s Detections page
+
+---
+
+## 🔧 Required Hardware
+
+To use the Raspberry Pi functionality, you’ll need:
+
+* Raspberry Pi 4 (recommended)
+* Raspberry Pi OS (Bullseye or Bookworm)
+* DFRobot DHT20 (Temperature & Humidity) — I²C address `0x38`
+* BH1750 Light Sensor — I²C address `0x5C`
+* Raspberry Pi Camera Module (or compatible USB camera)
+* Stable Wi-Fi or Ethernet connection
+
+---
+
+## ⚙️ Raspberry Pi Setup Instructions
+
+### 1. Update your Pi and enable interfaces
+
+Open a terminal on the Pi and run:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo raspi-config
+```
+
+Then go to:
+
+* Interface Options → **Enable I2C**
+* Interface Options → **Enable Camera**
+
+Reboot your Pi:
+
+```bash
+sudo reboot
+```
+
+---
+
+### 2. Install required packages
+
+In the terminal, install these dependencies:
+
+```bash
+sudo apt install -y python3-pip python3-opencv python3-picamera2 python3-smbus i2c-tools
+pip3 install flask DFRobot_DHT20
+```
+
+---
+
+### 3. Confirm sensors are connected correctly
+
+Run:
+
+```bash
+i2cdetect -y 1
+```
+
+You should see:
+
+* `38` → DHT20 sensor
+* `5c` → BH1750 light sensor
+
+If not, check your wiring.
+
+---
+
+### 4. Run the Raspberry Pi script
+
+Navigate to the folder and run the script:
+
+```bash
+cd raspberry-pi-code
+python3 fire-up-raspberry-pi-code.py
+```
+
+You should see output similar to:
+
+```
+Running on http://0.0.0.0:8000
+```
+
+This means the local Flask server is active.
+
+Available endpoints:
+
+* `/mjpeg` → live camera stream
+* `/frame.jpg` → single image frame
+* `/sensors` → live temperature, humidity, and light level (JSON)
+
+---
+
+## 🔗 Connecting to the Fire Up App
+
+1. Find your Raspberry Pi’s IP address:
+
+```bash
+hostname -I
+```
+
+2. In **Fire Up → Detections Page**, paste the URL:
+
+```text
+http://<your-pi-ip>:8000
+```
+
+Example:
+
+```text
+http://192.168.1.14:8000
+```
+
+Once connected, the app will display:
+
+* Live camera feed
+* Real-time environmental data
+* Fire/smoke classification using the AI model
+
+---
+
+## 📌 Notes
+
+* The temperature includes a −10°C adjustment to account for Pi overheating. You can change this in the script as needed.
+* Use a proper **5V 3A power supply** for stability.
+* Place the system in a well-ventilated, outdoor-protected space for best results.
+* This setup can be expanded to send alerts using services like Twilio or email APIs.
+
+Your Raspberry Pi now acts as a **real-time wildfire detection node** chained directly into **Fire Up**.
+
+
 ---
 
 ## 🧰 Repository Structure  
@@ -105,6 +251,8 @@ Fire-Up-Public/
 ├── lib/  
 │   └── theme.py       # Global CSS theme for consistent UI styling  
 ├── assets/            # App logo and media files  
+├── raspberry-pi-code/  
+│   └── fire-up-raspberry-pi-code.py   # Code for Raspberry Pi module (runs Flask server for live monitoring)  
 ├── Welcome.py         # App entry point (landing page)  
 ├── requirements.txt   # Dependencies for Streamlit deployment  
 └── ml-model/          # Scripts & results used for model training and evaluation  
