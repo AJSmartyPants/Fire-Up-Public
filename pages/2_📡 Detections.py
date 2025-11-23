@@ -18,6 +18,13 @@ st_autorefresh(interval=5 * 1000, key="sensor_refresh")
 
 st.subheader("Detections")
 st.caption("Live sensor stream from Raspberry Pi and CNN identification of image input")
+st.write(
+    """**Download the Raspberry Pi code here:**  
+    https://github.com/AJSmartyPants/Fire-Up-Public/blob/main/raspberry-pi-code/fire-up-raspberry-pi-code.py 
+    **View full Raspberry Pi setup guide here:**  
+    https://github.com/AJSmartyPants/Fire-Up-Public/blob/main/README.md#-raspberry-pi-integration-live-detection-module
+    """
+)
 
 pi_url = st.text_input(
     "Enter your Raspberry Pi Flask URL",
